@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>AuthLab – Dashboard</title>
+  </head>
+  <body>
+    <h1>Welcome, {{ user }}!</h1>
+    <p>You are logged in. <strong>Logout</strong> marker is visible here.</p>
+
+    {% if error %}
+      <p style="color:#b00">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('web.logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Logout</button>
+    </form>
+
+    <h2>Lab features</h2>
+    <ul>
+    <li><a href="/search">Search (Reflected XSS)</a></li>
+    <li><a href="/guestbook">Guestbook (Stored XSS)</a></li>
+    <li><a href="/products">Products (SQLi)</a></li>
+    <li><a href="/notes">Notes (IDOR)</a></li>
+    </ul>
+
+  </body>
+</html>

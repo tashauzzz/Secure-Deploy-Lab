@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authlab
+  namespace: authlab
+  labels:
+    app.kubernetes.io/name: authlab
+    app.kubernetes.io/part-of: secure-deploy-lab
+    app.kubernetes.io/component: web
+    app.kubernetes.io/managed-by: kubectl
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: authlab
+      app.kubernetes.io/part-of: secure-deploy-lab
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authlab
+        app.kubernetes.io/part-of: secure-deploy-lab
+        app.kubernetes.io/component: web
+    spec:
+      serviceAccountName: authlab
+      automountServiceAccountToken: false
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+
+      initContainers:
+        - name: db-bootstrap
+          image: authlab-deploy:hardened
+          imagePullPolicy: Never
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: authlab-config
+            - secretRef:
+                name: authlab-secret
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              python scripts/db/db_init.py init
+              python scripts/db/db_init.py verify
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi 
+          volumeMounts:
+            - name: authlab-data
+              mountPath: /app/data
+            - name: authlab-tmp
+              mountPath: /tmp
+
+      containers:
+        - name: authlab
+          image: authlab-deploy:hardened
+          imagePullPolicy: Never
+          securityContext:
+            allowPrivilegeEscalation: false 
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: http
+              containerPort: 5000
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          envFrom:
+            - configMapRef:
+                name: authlab-config
+            - secretRef:
+                name: authlab-secret
+          volumeMounts:
+            - name: authlab-data
+              mountPath: /app/data
+            - name: authlab-tmp
+              mountPath: /tmp
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 6
+      volumes:
+        - name: authlab-data
+          emptyDir: {}
+        - name: authlab-tmp
+          emptyDir: {}

@@ -1,0 +1,55 @@
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+!.env.validation.example
+
+k8s/secret.local.yaml
+
+# Local runtime state
+.state/
+cookies.txt
+zap.out
+
+# Local databases
+data/*
+!data/.gitkeep
+
+# Runtime logs
+logs/*
+!logs/.gitkeep
+
+# Generated security reports / CI artifacts
+reports/*
+!reports/.gitkeep
+
+# Tool caches
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Trivy / scanner cache variants
+.trivycache/
+trivy-cache/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

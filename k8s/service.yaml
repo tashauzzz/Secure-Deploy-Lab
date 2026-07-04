@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: authlab
+  namespace: authlab
+  labels:
+    app.kubernetes.io/name: authlab
+    app.kubernetes.io/part-of: secure-deploy-lab
+    app.kubernetes.io/component: web
+    app.kubernetes.io/managed-by: kubectl
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: authlab
+    app.kubernetes.io/part-of: secure-deploy-lab
+    app.kubernetes.io/component: web
+  ports:
+    - name: http
+      protocol: TCP
+      port: 5000
+      targetPort: http

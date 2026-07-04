@@ -1,0 +1,48 @@
+FROM python:3.13-slim
+
+# Apply currently available OS package fixes before image scanning.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV LOG_TO_STDOUT=true
+
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+COPY . /app
+
+ARG AUTHLAB_UID=1000
+ARG AUTHLAB_GID=1000
+
+RUN groupadd --gid "$AUTHLAB_GID" authlab \
+    && useradd \
+        --uid "$AUTHLAB_UID" \
+        --gid authlab \
+        --home-dir /app \
+        --shell /usr/sbin/nologin \
+        --no-create-home \
+        authlab
+        
+# Keep application code root-owned; allow writes only to runtime state.
+RUN mkdir -p /app/data \
+    && chown -R root:root /app \
+    && chown -R authlab:authlab /app/data \
+    && chmod -R go-w /app \
+    && chmod 750 /app/data
+
+ENV HOST=0.0.0.0
+ENV PORT=5000
+
+EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=2).read()" || exit 1
+
+USER authlab
+
+CMD ["python", "app.py"]

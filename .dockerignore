@@ -1,0 +1,43 @@
+# Git metadata
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# Python bytecode / virtual environment
+.venv/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Local environment / secrets
+.env
+.env.*
+.state/
+k8s/secret.local.yaml
+
+# Local runtime state
+data/
+logs/
+reports/
+cookies.txt
+zap.out
+
+# Tool caches
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.trivycache/
+trivy-cache/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

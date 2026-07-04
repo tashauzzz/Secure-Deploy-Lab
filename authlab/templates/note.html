@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>AuthLab - Note {% if state == 'poc' %}(Vulnerable){% else %}(Safe){% endif %}</title>
+  </head>
+  <body>
+    <h1>Note {% if state == 'poc' %}(Vulnerable){% else %}(Safe){% endif %}</h1>
+
+    <p><strong>ID:</strong> {{ note.id }}</p>
+    <p><strong>Title:</strong> {{ note.title }}</p>
+    <p><strong>Body:</strong> {{ note.body }}</p>
+    <p><small>Owner: {{ note.owner }}</small></p>
+
+    <p><a href="/notes">Back to list</a> · <a href="/dashboard">Back to dashboard</a></p>
+  </body>
+</html>

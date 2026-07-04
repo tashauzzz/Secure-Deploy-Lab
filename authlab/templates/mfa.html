@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>AuthLab – MFA</title>
+  </head>
+  <body>
+    <h1>Enter one-time code</h1>
+
+    {% if error %}
+      <p style="color:#b00">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="/mfa" autocomplete="off">
+      <label>Code (6 digits)
+        <input name="code" pattern="\d{6}" maxlength="6" required>
+      </label><br>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Verify</button>
+    </form>
+
+    <p><a href="/login">Back to login</a></p>
+  </body>
+</html>

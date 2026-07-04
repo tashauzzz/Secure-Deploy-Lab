@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>AuthLab – Products {% if state == 'poc' %}(Vulnerable){% else %}(Safe){% endif %}</title>
+  </head>
+  <body>
+    <h1>Products {% if state == 'poc' %}(Vulnerable){% else %}(Safe){% endif %}</h1>
+
+    <form method="get" action="/products" autocomplete="off">
+      <label>Search <input name="q" value="{{ q or '' }}" placeholder="e.g. Laptop"></label>
+      <button type="submit">Find</button>
+    </form>
+
+    <hr>
+
+    {% if not searched %}
+      <p>Enter a product name or category to search.</p>
+
+      <p>Available examples:</p>
+      <ul>
+        <li>Laptop</li>
+        <li>Phone</li>
+        <li>Router</li>
+        <li>Monitor</li>
+        <li>Keyboard</li>
+      </ul>
+    {% else %}
+      <p>Matches: {{ results|length }}</p>
+
+      {% if results %}
+        <table border="1" cellpadding="6" cellspacing="0">
+          <tr><th>ID</th><th>Name</th><th>Price</th></tr>
+          {% for r in results %}
+            <tr>
+              <td>{{ r.id }}</td>
+              <td>{{ r.name }}</td>
+              <td>{{ "%.2f"|format(r.price) }}</td>
+            </tr>
+          {% endfor %}
+        </table>
+      {% else %}
+        <p>No matching products.</p>
+      {% endif %}
+    {% endif %}
+
+    <p><a href="/dashboard">Back to dashboard</a></p>
+    
+  </body>
+</html>

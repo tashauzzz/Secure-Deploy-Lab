@@ -1,0 +1,201 @@
+name: security
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    - cron: '47 22 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  container-hardening:
+    name: Container hardening
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.13'
+
+      - name: Bootstrap validation environment
+        run: ./scripts/00_env_bootstrap.sh validation
+
+      - name: Initialize validation database
+        run: ./scripts/01_app_db_bootstrap.sh validation
+
+      - name: Build baseline image
+        run: ./scripts/02_build_image.sh validation baseline
+
+      - name: Record baseline vulnerability evidence
+        run: ./scripts/03_scan_trivy.sh baseline
+
+      - name: Run baseline smoke checks
+        run: ./scripts/04_run_image.sh validation baseline
+
+      - name: Build hardened image
+        run: ./scripts/02_build_image.sh validation hardened
+
+      - name: Enforce hardened vulnerability policy
+        run: ./scripts/03_scan_trivy.sh hardened
+
+      - name: Run hardened smoke checks
+        run: ./scripts/04_run_image.sh validation hardened
+
+      - name: Verify hardened runtime properties
+        run: ./scripts/05_verify_hardening.sh validation
+
+      - name: Save verified hardened image
+        run: |
+          mkdir -p reports
+          docker image save \
+            authlab-deploy:hardened \
+            -o reports/authlab-hardened-image.tar
+
+      - name: Upload verified hardened image
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: authlab-hardened-image
+          path: reports/authlab-hardened-image.tar
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Tear down Compose runtime
+        if: always()
+        run: ./scripts/99_cleanup.sh compose
+
+      - name: Upload container security reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: container-security-reports
+          path: |
+            reports/trivy-baseline.json
+            reports/trivy-baseline-checks.json
+            reports/run-baseline.json
+            reports/trivy-hardened.json
+            reports/trivy-hardened-checks.json
+            reports/run-hardened.json
+            reports/hardened-runtime-checks.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  kubernetes-workload-hardening:
+    name: Kubernetes workload hardening
+    needs: container-hardening
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.13'
+
+      - name: Install pinned Kubernetes tools
+        id: install_tools
+        run: |
+          BIN_DIR="$RUNNER_TEMP/secure-deploy-bin"
+
+          ./.github/scripts/install_k8s_tools.sh "$BIN_DIR"
+
+          echo "$BIN_DIR" >> "$GITHUB_PATH"
+
+      - name: Bootstrap validation environment
+        run: ./scripts/00_env_bootstrap.sh validation
+
+      - name: Download verified hardened image
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: authlab-hardened-image
+          path: reports/image
+
+      - name: Load verified hardened image
+        run: |
+          docker image load \
+            -i reports/image/authlab-hardened-image.tar
+
+          docker image inspect authlab-deploy:hardened >/dev/null
+
+      - name: Prepare Kubernetes Secret
+        run: ./scripts/06_prepare_k8s_secret.sh validation
+
+      - name: Prepare kind cluster
+        run: ./scripts/07_prepare_kind.sh --recreate
+
+      - name: Apply hardened Kubernetes manifests
+        run: ./scripts/08_apply_k8s.sh
+
+      - name: Verify live Kubernetes workload
+        run: ./scripts/09_verify_k8s.sh
+
+      - name: Tear down Kubernetes runtime
+        if: ${{ always() && steps.install_tools.outcome == 'success' }}
+        run: ./scripts/99_cleanup.sh all
+
+      - name: Upload Kubernetes security reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kubernetes-security-reports
+          path: |
+            reports/kubescape-manifests.json
+            reports/k8s-manifest-checks.json
+            reports/kubescape-live.json
+            reports/k8s-workload-checks.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  summary:
+    name: Security summary
+    if: ${{ always() }}
+    needs:
+      - container-hardening
+      - kubernetes-workload-hardening
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.13'
+
+      - name: Download container security reports
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: container-security-reports
+          path: reports
+
+      - name: Download Kubernetes security reports
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: kubernetes-security-reports
+          path: reports
+
+      - name: Generate security summary
+        if: always()
+        run: ./scripts/10_security_summary.sh validation
+
+      - name: Upload security summary
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: security-summary
+          path: reports/security-summary.md
+          if-no-files-found: warn
+          retention-days: 3
