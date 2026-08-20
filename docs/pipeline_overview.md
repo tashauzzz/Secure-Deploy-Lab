@@ -98,7 +98,7 @@ Some pipeline responsibilities are implemented through supporting files rather t
 * [.env.validation.example](../.env.validation.example) — provides the unattended `validation` profile template
 * [requirements.txt](../requirements.txt) — defines the Python dependencies installed on the host and in both image variants
 
-Both Dockerfiles use the same base image, OS package refresh, Python dependencies, and application source. Their main difference is runtime posture rather than software composition.
+Both Dockerfiles use the same base image, OS package refresh, Python application dependencies, and application source. The hardened image additionally removes pip after dependency installation because the package manager is not required at runtime; the application dependency set remains unchanged.
 
 ### 4.3 Kubernetes configuration
 
