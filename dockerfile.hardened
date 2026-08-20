@@ -12,7 +12,11 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV LOG_TO_STDOUT=true
 
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Install application dependencies, then remove the build-time package manager
+# because it is not required by the runtime workload.
+RUN python -m pip install --no-cache-dir -r /app/requirements.txt \
+    && python -m pip uninstall --yes pip
 
 COPY . /app
 
